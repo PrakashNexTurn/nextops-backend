@@ -24,10 +24,6 @@ class Agent(Base):
     # Agent configuration
     tags = Column(JSON, default=dict)
     
-    # MCP Integration
-    mcp_ids = Column(JSON, default=list)  # List of MCP server IDs to use
-    tool_ids = Column(JSON, default=list)  # List of direct tool IDs to use
-    
     # Status
     enabled = Column(Boolean, default=True, index=True)
     
@@ -55,8 +51,6 @@ class Agent(Base):
             "name": self.name,
             "description": self.description,
             "system_prompt": self.system_prompt,
-            "mcp_ids": self.mcp_ids,
-            "tool_ids": self.tool_ids,
             "tags": self.tags,
             "enabled": self.enabled,
             "parameters": self.parameters,
