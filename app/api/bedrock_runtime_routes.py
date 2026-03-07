@@ -38,7 +38,7 @@ class CreateRuntimeRequest:
     environment: str = "dev"
     environment_variables: Optional[dict] = None
     tags: Optional[dict] = None
-    metadata: Optional[dict] = None
+    runtime_metadata: Optional[dict] = None
 
 
 class UpdateRuntimeRequest:
@@ -56,7 +56,7 @@ class UpdateRuntimeRequest:
     environment: Optional[str] = None
     environment_variables: Optional[dict] = None
     tags: Optional[dict] = None
-    metadata: Optional[dict] = None
+    runtime_metadata: Optional[dict] = None
 
 
 # ============================================================================
@@ -102,7 +102,7 @@ async def create_runtime(
             environment=request_data.get("environment", "dev"),
             environment_variables=request_data.get("environment_variables"),
             tags=request_data.get("tags"),
-            metadata=request_data.get("metadata")
+            runtime_metadata=request_data.get("runtime_metadata")
         )
         
         return {"status": "success", "data": runtime.to_dict()}
