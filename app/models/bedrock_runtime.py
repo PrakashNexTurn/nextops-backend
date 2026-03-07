@@ -5,11 +5,12 @@ This model manages Bedrock agent core runtime configurations in the database,
 allowing dynamic runtime creation and management without code changes.
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey, Text, Enum, Table
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey, Text, Enum, Table, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 import enum
+import uuid
 from app.db.base import Base
 
 
@@ -214,6 +215,6 @@ class BedrockRuntime(Base):
 bedrock_runtime_agents = Table(
     'bedrock_runtime_agents',
     Base.metadata,
-    Column('runtime_id', Integer, ForeignKey('bedrock_runtimes.id', ondelete='CASCADE')),
-    Column('agent_id', Integer, ForeignKey('agents.id', ondelete='CASCADE'))
+    Column('runtime_id', Integer, ForeignKey('bedrock_runtimes.id', ondelete='CASCADE'), primary_key=True),
+    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id', ondelete='CASCADE'), primary_key=True)
 )
