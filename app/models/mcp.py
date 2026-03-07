@@ -17,5 +17,7 @@ class MCP(Base):
     env_vars = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Relationships
     tools = relationship("Tool", back_populates="mcp", cascade="all, delete-orphan")
     mcp_tools = relationship("MCPTool", back_populates="mcp", cascade="all, delete-orphan")
+    agent_mcps = relationship("AgentMCP", back_populates="mcp", cascade="all, delete-orphan")
