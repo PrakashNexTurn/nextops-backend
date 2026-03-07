@@ -45,7 +45,7 @@ class BedrockRuntimeService:
         environment: str = "dev",
         environment_variables: Optional[Dict] = None,
         tags: Optional[Dict] = None,
-        metadata: Optional[Dict] = None
+        runtime_metadata: Optional[Dict] = None
     ) -> BedrockRuntime:
         """Create a new Bedrock runtime configuration"""
         try:
@@ -81,7 +81,7 @@ class BedrockRuntimeService:
                 environment=environment,
                 environment_variables=environment_variables or {},
                 tags=tags or {},
-                metadata=metadata or {}
+                runtime_metadata=runtime_metadata or {}
             )
             
             self.db.add(runtime)
