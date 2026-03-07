@@ -16,10 +16,11 @@ from app.models.planner_agent import PlannerAgent
 from app.models.deployment import Deployment
 from app.models.session import Session
 from app.models.cloud_account import CloudAccount
+from app.models.bedrock_runtime import BedrockRuntime
 
 # Import API routers
 from app.api import tools, mcps, agents, planners, sessions, deployments, clouds
-from app.api import mcp_dynamic
+from app.api import mcp_dynamic, bedrock_runtime_routes
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -49,6 +50,7 @@ app.include_router(planners.router)
 app.include_router(sessions.router)
 app.include_router(deployments.router)
 app.include_router(clouds.router)
+app.include_router(bedrock_runtime_routes.router, prefix="/api", tags=["bedrock-runtimes"])
 
 @app.get("/health")
 async def health_check():
