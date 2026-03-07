@@ -26,7 +26,6 @@ class Agent(Base):
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     created_by = Column(String(255), nullable=True)
     
     # Relationships
@@ -47,7 +46,6 @@ class Agent(Base):
             "system_prompt": self.system_prompt,
             "tags": self.tags,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "created_by": self.created_by,
         }
 
