@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+# Add the parent directory to Python path so Alembic can find the 'app' module
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
