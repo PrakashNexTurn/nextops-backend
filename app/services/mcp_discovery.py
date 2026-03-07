@@ -71,6 +71,47 @@ class MCPDiscoveryService:
             
         return discovered_tools
 
+    async def _parse_sse_stream(self, content: str) -> List[Dict[str, Any]]:
+        """
+        Parse Server-Sent Events (SSE) format and extract JSON data.
+        
+        SSE Format Example:
+            data: {"tool": {"name": "search", "description": "Search"}}
+            data: {"tool": {"name": "code", "description": "Code"}}
+        
+        Args:
+            content: Raw SSE stream content
+        
+        Returns:
+            List of parsed JSON objects
+        """
+        tools = []
+        lines = content.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Skip empty lines and comments
+            if not line or line.startswith(':'):
+                continue
+            
+            # Parse SSE data lines
+            if line.startswith('data: '):
+                json_str = line[6:]  # Remove 'data: ' prefix
+                try:
+                    data = json.loads(json_str)
+                    # SSE streams may wrap the tool in a 'tool' field
+                    if 'tool' in data:
+                        tools.append(data['tool'])
+                    else:
+                        tools.append(data)
+                    logger.debug(f"Parsed SSE data: {data}")
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse SSE JSON line: {json_str[:100]} - {str(e)}")
+                    continue
+        
+        return tools
+
     async def _discover_sse_tools(
         self, 
         mcp_id: UUID, 
@@ -78,6 +119,8 @@ class MCPDiscoveryService:
     ) -> List[Dict[str, Any]]:
         """
         Discover tools via SSE (Server-Sent Events) MCP server.
+        
+        Handles both JSON-RPC responses and SSE streaming format.
         
         Args:
             mcp_id: UUID of the MCP server
@@ -122,6 +165,7 @@ class MCPDiscoveryService:
                     if response.status != 200:
                         logger.error(f"Failed to initialize MCP server: {response.status}")
                         return []
+                    logger.debug(f"MCP server initialized: {response.status}")
                 
                 # List available tools
                 tools_url = f"{url}/tools/list"
@@ -135,19 +179,39 @@ class MCPDiscoveryService:
                     tools_url,
                     json=tools_payload,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=10)
+                    timeout=aiohttp.ClientTimeout(total=30)
                 ) as response:
+                    content_type = response.content_type or ""
+                    logger.info(f"MCP tools response: {response.status}, content-type: {content_type}")
+                    
                     if response.status == 200:
-                        data = await response.json()
-                        tools = data.get("result", {}).get("tools", [])
-                        logger.info(f"Retrieved {len(tools)} tools from SSE MCP server")
+                        # Handle SSE streaming format
+                        if "text/event-stream" in content_type:
+                            logger.info("Parsing SSE stream format")
+                            content = await response.text()
+                            tools = await self._parse_sse_stream(content)
+                            logger.info(f"Retrieved {len(tools)} tools from SSE stream")
+                        else:
+                            # Handle regular JSON response
+                            try:
+                                data = await response.json()
+                                tools = data.get("result", {}).get("tools", [])
+                                logger.info(f"Retrieved {len(tools)} tools from JSON response")
+                            except aiohttp.ContentTypeError as e:
+                                # Fallback: try parsing as text/SSE if JSON parsing fails
+                                logger.warning(f"JSON parse failed, attempting SSE parse: {str(e)}")
+                                content = await response.text()
+                                tools = await self._parse_sse_stream(content)
+                                logger.info(f"Retrieved {len(tools)} tools from SSE stream (fallback)")
                     else:
                         logger.error(f"Failed to list tools: {response.status}")
+                        content = await response.text()
+                        logger.error(f"Response: {content[:200]}")
                         
         except asyncio.TimeoutError:
             logger.error(f"Timeout connecting to SSE MCP server: {url}")
         except Exception as e:
-            logger.error(f"Error discovering SSE tools: {str(e)}")
+            logger.error(f"Error discovering SSE tools: {type(e).__name__}: {str(e)}")
         
         return tools
 
