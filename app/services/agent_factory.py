@@ -3,10 +3,11 @@ Dynamic Agent Factory Service
 
 Creates Agent instances dynamically based on database configuration.
 Loads MCP clients, resolves tools, and builds agents without hardcoding.
+Supports selective agent initialization from a list.
 """
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from sqlalchemy.orm import Session
 from strands import Agent
 from model.load import load_model
@@ -22,10 +23,12 @@ class AgentFactory:
     
     Features:
     - Load agent configs from database
+    - Selective agent initialization by name or ID
     - Resolve MCP IDs to MCP clients
     - Resolve tool IDs to actual tools
     - Create Strands Agent instances
     - Support memory hooks and state
+    - Graceful error handling for missing agents
     """
     
     def __init__(self, db: Session, memory_client: Optional[MemoryClient] = None):
@@ -108,35 +111,108 @@ class AgentFactory:
         actor_id: str,
         session_id: str,
         enabled_only: bool = True,
-        hooks: Optional[List[HookProvider]] = None
-    ) -> List[Agent]:
+        hooks: Optional[List[HookProvider]] = None,
+        selected_agents: Optional[List[Union[str, int]]] = None
+    ) -> tuple[List[Agent], Dict[str, Any]]:
         """
-        Load all agent configurations from database and create Agent instances.
+        Load agent configurations from database and create Agent instances.
+        
+        Supports selective agent initialization - only the specified agents will be loaded.
         
         Args:
             actor_id: Actor ID for memory tracking
             session_id: Session ID for memory tracking
-            enabled_only: Only load enabled agents
+            enabled_only: Only load enabled agents (ignored if selected_agents provided)
             hooks: Optional hooks for all agents
+            selected_agents: List of agent names or IDs to initialize.
+                           If None, loads all agents (filtered by enabled_only).
+                           Examples: ["agent-1", "DataProcessor"], [1, 2, 3]
             
         Returns:
-            List of created Agent instances
+            Tuple of (List of created Agent instances, metadata dict with stats)
+            
+        Raises:
+            ValueError: If no agents found matching selected_agents criteria
         """
         from app.models.agent import Agent as AgentModel
         
         self.logger.info("📚 Loading agents from database...")
         
+        # Track statistics
+        stats = {
+            "total_available": 0,
+            "total_selected": 0,
+            "successfully_created": 0,
+            "failed": [],
+            "not_found": [],
+            "mode": "all" if not selected_agents else "selective"
+        }
+        
         # Query agents from database
         query = self.db.query(AgentModel)
-        if enabled_only:
-            query = query.filter(AgentModel.enabled == True)
+        
+        # If selective mode: filter by selected agents
+        if selected_agents:
+            self.logger.info(f"🎯 Selective mode: Loading {len(selected_agents)} specified agent(s)")
+            
+            # Convert selected_agents to list of identifiers
+            selected_names = []
+            selected_ids = []
+            
+            for agent_ref in selected_agents:
+                if isinstance(agent_ref, int):
+                    selected_ids.append(agent_ref)
+                else:
+                    selected_names.append(str(agent_ref))
+            
+            # Build query with OR conditions
+            if selected_ids or selected_names:
+                from sqlalchemy import or_
+                conditions = []
+                
+                if selected_ids:
+                    conditions.append(AgentModel.id.in_(selected_ids))
+                if selected_names:
+                    conditions.append(AgentModel.name.in_(selected_names))
+                
+                query = query.filter(or_(*conditions))
+            else:
+                query = query.filter(False)  # No valid references provided
+        
+        else:
+            # Load all agents (respecting enabled_only filter)
+            if enabled_only:
+                self.logger.info("📋 Loading all enabled agents")
+                query = query.filter(AgentModel.enabled == True)
+            else:
+                self.logger.info("📋 Loading all agents")
         
         agent_configs = query.all()
-        self.logger.info(f"📦 Found {len(agent_configs)} agent(s)")
+        stats["total_available"] = len(agent_configs)
+        stats["total_selected"] = len(selected_agents) if selected_agents else len(agent_configs)
+        
+        self.logger.info(f"📦 Found {len(agent_configs)} agent(s) matching criteria")
+        
+        # Track which agents were requested but not found
+        if selected_agents:
+            found_ids = {str(config.id) for config in agent_configs}
+            found_names = {config.name for config in agent_configs}
+            
+            for agent_ref in selected_agents:
+                agent_ref_str = str(agent_ref)
+                if agent_ref_str not in found_ids and agent_ref_str not in found_names:
+                    stats["not_found"].append(agent_ref_str)
+            
+            if stats["not_found"]:
+                self.logger.warning(
+                    f"⚠️ {len(stats['not_found'])} requested agent(s) not found: "
+                    f"{', '.join(stats['not_found'])}"
+                )
         
         # Create agents in parallel
         agents = []
         tasks = []
+        task_to_config = {}
         
         for config in agent_configs:
             config_dict = config.to_dict()
@@ -147,12 +223,31 @@ class AgentFactory:
                 hooks=hooks
             )
             tasks.append(task)
+            task_to_config[id(task)] = config
         
+        # Run all tasks and handle failures
         if tasks:
-            agents = await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    config = agent_configs[i]
+                    error_msg = f"{config.name}: {str(result)}"
+                    stats["failed"].append(error_msg)
+                    self.logger.error(f"❌ Error creating agent: {error_msg}")
+                else:
+                    agents.append(result)
+                    stats["successfully_created"] += 1
         
-        self.logger.info(f"✅ Created {len(agents)} agent(s)")
-        return agents
+        stats["successfully_created"] = len(agents)
+        
+        # Log summary
+        self.logger.info(
+            f"✅ Summary: {stats['successfully_created']} agent(s) created, "
+            f"{len(stats['failed'])} error(s), {len(stats['not_found'])} not found"
+        )
+        
+        return agents, stats
     
     async def _resolve_tools(self, agent_config: Dict[str, Any]) -> List[Any]:
         """
