@@ -93,7 +93,7 @@ class BedrockRuntime(Base):
     
     # Additional metadata
     tags = Column(JSON, default=dict, nullable=True, doc="Tags for runtime categorization")
-    metadata = Column(JSON, default=dict, nullable=True, doc="Additional metadata")
+    runtime_metadata = Column(JSON, default=dict, nullable=True, doc="Additional runtime metadata")
     
     # Relationships
     agents = relationship(
@@ -132,7 +132,7 @@ class BedrockRuntime(Base):
             "last_error": self.last_error,
             "last_error_at": self.last_error_at.isoformat() if self.last_error_at else None,
             "tags": self.tags or {},
-            "metadata": self.metadata or {}
+            "runtime_metadata": self.runtime_metadata or {}
         }
     
     @staticmethod
@@ -157,7 +157,7 @@ class BedrockRuntime(Base):
             environment_variables=data.get("environment_variables", {}),
             status=RuntimeStatus(data.get("status", "inactive")),
             tags=data.get("tags", {}),
-            metadata=data.get("metadata", {})
+            runtime_metadata=data.get("runtime_metadata", {})
         )
         
         db.add(runtime)
