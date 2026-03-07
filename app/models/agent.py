@@ -32,6 +32,12 @@ class Agent(Base):
     agent_mcps = relationship("AgentMCP", back_populates="agent", cascade="all, delete-orphan")
     planner_agents = relationship("PlannerAgent", back_populates="agent", cascade="all, delete-orphan")
     deployments = relationship("Deployment", back_populates="agent", cascade="all, delete-orphan")
+    runtimes = relationship(
+        "BedrockRuntime",
+        secondary="bedrock_runtime_agents",
+        back_populates="agents",
+        doc="Bedrock runtimes associated with this agent"
+    )
     
     def __repr__(self):
         return f"<Agent(id={self.id}, name={self.name})>"
