@@ -20,7 +20,6 @@ class Agent(Base):
     name = Column(String(255), unique=True, nullable=False, index=True)
     description = Column(Text)
     system_prompt = Column(Text, nullable=False)
-    agent_type = Column(String(50), default="custom", nullable=False)  # custom, terraform, azure, etc.
     
     # Agent configuration
     tags = Column(JSON, default=dict)
@@ -48,7 +47,7 @@ class Agent(Base):
     deployments = relationship("Deployment", back_populates="agent", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Agent(id={self.id}, name={self.name}, type={self.agent_type}, enabled={self.enabled})>"
+        return f"<Agent(id={self.id}, name={self.name}, enabled={self.enabled})>"
     
     def to_dict(self):
         """Convert agent to dictionary"""
@@ -56,7 +55,6 @@ class Agent(Base):
             "id": str(self.id),
             "name": self.name,
             "description": self.description,
-            "agent_type": self.agent_type,
             "system_prompt": self.system_prompt,
             "capabilities": self.capabilities,
             "mcp_ids": self.mcp_ids,
