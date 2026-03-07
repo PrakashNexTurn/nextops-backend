@@ -23,7 +23,6 @@ class Agent(Base):
     
     # Agent configuration
     tags = Column(JSON, default=dict)
-    capabilities = Column(JSON, default=list)  # List of capabilities: ["plan", "apply", "destroy"]
     
     # MCP Integration
     mcp_ids = Column(JSON, default=list)  # List of MCP server IDs to use
@@ -56,7 +55,6 @@ class Agent(Base):
             "name": self.name,
             "description": self.description,
             "system_prompt": self.system_prompt,
-            "capabilities": self.capabilities,
             "mcp_ids": self.mcp_ids,
             "tool_ids": self.tool_ids,
             "tags": self.tags,
@@ -84,7 +82,6 @@ class AgentTemplate(Base):
     
     # Template configuration (base for new agents)
     system_prompt_template = Column(Text, nullable=False)
-    default_capabilities = Column(JSON, default=list)
     default_mcp_ids = Column(JSON, default=list)
     default_tool_ids = Column(JSON, default=list)
     default_parameters = Column(JSON, default=dict)
@@ -108,7 +105,6 @@ class AgentTemplate(Base):
             "description": self.description,
             "category": self.category,
             "system_prompt_template": self.system_prompt_template,
-            "default_capabilities": self.default_capabilities,
             "default_mcp_ids": self.default_mcp_ids,
             "default_tool_ids": self.default_tool_ids,
             "default_parameters": self.default_parameters,
