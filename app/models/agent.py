@@ -24,9 +24,6 @@ class Agent(Base):
     # Agent configuration
     tags = Column(JSON, default=dict)
     
-    # Custom parameters
-    parameters = Column(JSON, default=dict)  # Custom agent-specific parameters
-    
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -49,7 +46,6 @@ class Agent(Base):
             "description": self.description,
             "system_prompt": self.system_prompt,
             "tags": self.tags,
-            "parameters": self.parameters,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "created_by": self.created_by,
