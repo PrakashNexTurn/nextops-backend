@@ -19,6 +19,7 @@ from app.models.cloud_account import CloudAccount
 
 # Import API routers
 from app.api import tools, mcps, agents, planners, sessions, deployments, clouds
+from app.api import mcp_dynamic
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -42,6 +43,7 @@ app.add_middleware(
 # Include routers
 app.include_router(tools.router)
 app.include_router(mcps.router)
+app.include_router(mcp_dynamic.router)  # New dynamic MCP factory router
 app.include_router(agents.router)
 app.include_router(planners.router)
 app.include_router(sessions.router)
