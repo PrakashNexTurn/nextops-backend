@@ -14,6 +14,8 @@ class Agent(Base):
     tags = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Relationships
     agent_tools = relationship("AgentTool", back_populates="agent", cascade="all, delete-orphan")
+    agent_mcps = relationship("AgentMCP", back_populates="agent", cascade="all, delete-orphan")
     planner_agents = relationship("PlannerAgent", back_populates="agent", cascade="all, delete-orphan")
     deployments = relationship("Deployment", back_populates="agent", cascade="all, delete-orphan")
