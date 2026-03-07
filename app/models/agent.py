@@ -24,9 +24,6 @@ class Agent(Base):
     # Agent configuration
     tags = Column(JSON, default=dict)
     
-    # Status
-    enabled = Column(Boolean, default=True, index=True)
-    
     # Custom parameters
     parameters = Column(JSON, default=dict)  # Custom agent-specific parameters
     
@@ -42,7 +39,7 @@ class Agent(Base):
     deployments = relationship("Deployment", back_populates="agent", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<Agent(id={self.id}, name={self.name}, enabled={self.enabled})>"
+        return f"<Agent(id={self.id}, name={self.name})>"
     
     def to_dict(self):
         """Convert agent to dictionary"""
@@ -52,7 +49,6 @@ class Agent(Base):
             "description": self.description,
             "system_prompt": self.system_prompt,
             "tags": self.tags,
-            "enabled": self.enabled,
             "parameters": self.parameters,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
