@@ -134,7 +134,7 @@ class SwarmMemoryHook(HookProvider):
         log.info("🔗 Memory hooks registered")
 
 
-def _load_agents_from_runtime(
+async def _load_agents_from_runtime(
     db,
     runtime_id: Optional[int] = None,
     runtime_name: Optional[str] = None,
@@ -169,12 +169,13 @@ def _load_agents_from_runtime(
         if not runtime:
             log.warning(f"⚠️ Runtime not found: {runtime_id or runtime_name}")
             log.info("📦 Falling back to loading all enabled agents...")
-            return factory.create_agents_from_database(
+            agents, stats = await factory.create_agents_from_database(
                 actor_id=actor_id,
                 session_id=session_id,
                 enabled_only=True,
                 hooks=memory_hooks
             )
+            return agents
         
         log.info(f"✅ Found runtime: {runtime.name} (status: {runtime.status})")
         
@@ -185,13 +186,14 @@ def _load_agents_from_runtime(
         log.info(f"🎯 Runtime has {len(selected_agent_ids)} selected agent IDs and {len(selected_agent_names)} agent names")
         
         # Load specific agents from runtime config
-        return factory.create_agents_from_database(
+        agents, stats = await factory.create_agents_from_database(
             actor_id=actor_id,
             session_id=session_id,
             selected_agents=selected_agent_ids + selected_agent_names,
             enabled_only=True,
             hooks=memory_hooks
         )
+        return agents
     
     # Mode 2: Load specific agents by IDs or names
     elif selected_agent_ids or selected_agent_names:
@@ -200,24 +202,26 @@ def _load_agents_from_runtime(
         selected = (selected_agent_ids or []) + (selected_agent_names or [])
         log.info(f"🎯 Loading {len(selected)} selected agent(s)...")
         
-        return factory.create_agents_from_database(
+        agents, stats = await factory.create_agents_from_database(
             actor_id=actor_id,
             session_id=session_id,
             selected_agents=selected,
             enabled_only=True,
             hooks=memory_hooks
         )
+        return agents
     
     # Mode 3: Load all enabled agents (fallback)
     else:
         log.info("📦 Loading all enabled agents (default mode)...")
         
-        return factory.create_agents_from_database(
+        agents, stats = await factory.create_agents_from_database(
             actor_id=actor_id,
             session_id=session_id,
             enabled_only=True,
             hooks=memory_hooks
         )
+        return agents
 
 
 @app.async_task
@@ -326,7 +330,8 @@ async def run_swarm_in_background(payload, context):
         db = next(get_db())
         
         # Load agents using selective mode with runtime configuration support
-        agents = _load_agents_from_runtime(
+        # ✅ NOW PROPERLY AWAITING THE ASYNC FUNCTION
+        agents = await _load_agents_from_runtime(
             db=db,
             runtime_id=runtime_id,
             runtime_name=runtime_name,
