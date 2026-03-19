@@ -22,6 +22,16 @@ class RuntimeStatus(str, enum.Enum):
     ERROR = "error"
 
 
+# Association table for BedrockRuntime -> Agent relationship
+# MUST be defined before BedrockRuntime class to ensure secondary table exists
+bedrock_runtime_agents = Table(
+    'bedrock_runtime_agents',
+    Base.metadata,
+    Column('runtime_id', Integer, ForeignKey('bedrock_runtimes.id', ondelete='CASCADE'), primary_key=True),
+    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id', ondelete='CASCADE'), primary_key=True)
+)
+
+
 class BedrockRuntime(Base):
     """
     Bedrock Agent Core Runtime Configuration
@@ -99,7 +109,7 @@ class BedrockRuntime(Base):
     # Relationships
     agents = relationship(
         "Agent",
-        secondary="bedrock_runtime_agents",
+        secondary=bedrock_runtime_agents,
         back_populates="runtimes",
         doc="Agents associated with this runtime"
     )
@@ -209,12 +219,3 @@ class BedrockRuntime(Base):
         self.status = RuntimeStatus.ARCHIVED
         db.commit()
         db.refresh(self)
-
-
-# Association table for BedrockRuntime -> Agent relationship
-bedrock_runtime_agents = Table(
-    'bedrock_runtime_agents',
-    Base.metadata,
-    Column('runtime_id', Integer, ForeignKey('bedrock_runtimes.id', ondelete='CASCADE'), primary_key=True),
-    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id', ondelete='CASCADE'), primary_key=True)
-)
